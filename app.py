@@ -11,7 +11,9 @@ def home():
 def summarize():
     data = request.get_json()
     text = data.get('text', '')
-    summary = resume(text)
+    max_lenght = data.get('max_length', 130)
+    min_length = data.get('min_length', 30)
+    summary = resume(text, max_lenght, min_length)
     return jsonify({'summary': summary})
 
 if __name__ == '__main__':
