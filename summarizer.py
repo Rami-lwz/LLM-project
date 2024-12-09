@@ -22,7 +22,7 @@ def format_summary_openai(summary_text, openai_api_key=None):
     response = openai.Completion.create(
         engine="text-davinci-003",
         prompt=prompt,
-        max_tokens=300,
+        max_tokens=len(summary_text),
         temperature=0.7
     )
     return response["choices"][0]["text"].strip()
