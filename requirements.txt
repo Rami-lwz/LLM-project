@@ -1,2 +1,9 @@
 Flask==2.0.3
 gunicorn==20.1.0
+PyMuPDF==1.18.19
+Pillow==9.2.0
+pix2tex==0.1.0
+pytesseract==0.3.8
+Flask==2.0.3
+gunicorn==20.1.0
+
