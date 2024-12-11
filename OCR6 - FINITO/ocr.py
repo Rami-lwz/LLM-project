@@ -12,6 +12,36 @@ import pytesseract  # Import pytesseract for fallback OCR
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
+import re
+
+def clean_utf8(text: str) -> str:
+    # 
+    # Decodes all valid Unicode escape sequences (e.g., u00e9 -> é) and removes any malformed ones.
+    # After this function, there should be no remaining '\uXXXX' sequences in the text.
+    
+    # Args:
+    #     text (str): Input text that may contain unicode escape sequences.
+
+    # Returns:
+    #     str: Cleaned text with all valid Unicode escapes decoded.
+    # 
+
+    # Function to decode a valid \uXXXX sequence
+    def decode_unicode_match(match):
+        code = match.group(1)  # The hex part of the sequence
+        # Convert hex to int and then to the corresponding Unicode character
+        return chr(int(code, 16))
+
+    # First, decode all valid 4-digit Unicode sequences like \u00e9
+    text = re.sub(r'\\u([0-9a-fA-F]{4})', decode_unicode_match, text)
+
+    # Remove any remaining sequences that look like \u but aren't valid 4-hex-digit sequences
+    # This catches invalid or incomplete sequences and just removes them.
+    text = re.sub(r'\\u[0-9a-fA-F]{0,3}', '', text)
+
+    return text
+
+
 class OCR:
     def __init__(self, arguments=None):
         """
@@ -179,11 +209,11 @@ class OCR:
         # Adjust '.{0,10}' as needed to define "closeness".
         pattern_images = r'(?:\[image\].{0,10}){3,}'
         if re.search(pattern_images, latex_code):
-            logging.debug("Cleaning: Detected multiple [image] occurrences close together. Removing them.")
+            logging.debug("Cleaning: Detected multiple [image] occurrences close together. Removing them.") 
         latex_code = re.sub(pattern_images, '', latex_code)
-        latex_code = latex_code.encode('utf-8').decode('unicode_escape')
+        # latex_code = latex_code.encode('utf-8').decode('unicode_escape')
 
-        return latex_code
+        return clean_utf8(latex_code)
 
     def perform_ocr(self, image: Image.Image, confidence_threshold=0.5):
         """
