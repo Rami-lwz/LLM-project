@@ -118,15 +118,6 @@ class OCR:
         return confidence
 
     def clean_latex(self, latex_code: str) -> str:
-        """
-        Clean and correct the raw LaTeX code obtained from OCR.
-
-        Args:
-            latex_code (str): The raw LaTeX code to clean.
-
-        Returns:
-            str: The cleaned LaTeX code.
-        """
         original_code = latex_code  # Keep for debugging if needed
 
         # 1. Remove known OCR artifacts
@@ -144,7 +135,6 @@ class OCR:
             latex_code = re.sub(artifact, '', latex_code)
 
         # 2. Replace incorrect ellipsis representations with standard LaTeX commands
-        # Replace '...' not preceded by a backslash with '\cdots'
         if re.search(r'(?<!\\)\.\.\.', latex_code):
             logging.debug("Cleaning: Replacing incorrect ellipsis with '\\cdots'")
         latex_code = re.sub(r'(?<!\\)\.\.\.', r'\\cdots', latex_code)
@@ -153,10 +143,10 @@ class OCR:
         brace_diff = latex_code.count('{') - latex_code.count('}')
         if brace_diff > 0:
             logging.debug(f"Cleaning: Removing {brace_diff} extra '{{' braces from the end.")
-            latex_code = latex_code.rstrip('{') 
+            latex_code = latex_code.rstrip('{')
         elif brace_diff < 0:
             logging.debug(f"Cleaning: Removing {-brace_diff} extra '}}' braces from the end.")
-            latex_code = latex_code.rstrip('}') 
+            latex_code = latex_code.rstrip('}')
 
         # 4. Standardize LaTeX commands (e.g., replace common misrecognitions)
         command_corrections = {
@@ -169,7 +159,7 @@ class OCR:
             latex_code = latex_code.replace(wrong, correct)
 
         # 5. Remove or replace any remaining suspicious patterns
-        # Example: Remove anything between \sqrt[ and ]{...} if malformed
+        # Example: Fix malformed \sqrt commands
         if re.search(r'\\sqrt\[\w+\]\{', latex_code):
             logging.debug("Cleaning: Fixing malformed '\\sqrt' command.")
         latex_code = re.sub(r'\\sqrt\[\w+\]\{', r'\\sqrt{', latex_code)
@@ -177,7 +167,21 @@ class OCR:
         # 6. Trim whitespace
         latex_code = latex_code.strip()
 
-        # 7. Optionally, further cleaning steps can be added here
+        # 7. Remove repeated patterns of two or more characters repeated three or more times
+        pattern_repeat = r'(.{2,})\1{2,}'
+        while re.search(pattern_repeat, latex_code):
+            logging.debug("Cleaning: Removing repeated patterns of >=2 chars repeated 3+ times.")
+            latex_code = re.sub(pattern_repeat, '', latex_code)
+
+        # 8. Detect multiple [image] occurrences close to each other (3+ times)
+        # The following regex looks for the substring `[image]` followed by up to 10 characters,
+        # and this entire segment repeated 3 or more times.
+        # Adjust '.{0,10}' as needed to define "closeness".
+        pattern_images = r'(?:\[image\].{0,10}){3,}'
+        if re.search(pattern_images, latex_code):
+            logging.debug("Cleaning: Detected multiple [image] occurrences close together. Removing them.")
+        latex_code = re.sub(pattern_images, '', latex_code)
+        latex_code = latex_code.encode('utf-8').decode('unicode_escape')
 
         return latex_code
 
@@ -244,6 +248,156 @@ class OCR:
         except Exception as e:
             logging.error(f"Error performing pytesseract OCR: {e}")
             return "[image]"
+class BoringPDFParser:
+    def __init__(self, ocr_instance: OCR):
+        """
+        Initialize the PDFParser with an OCR instance.
+
+        Args:
+            ocr_instance (OCR): An instance of the OCR class.
+        """
+        self.ocr = ocr_instance
+        logging.info("Initialized PDFParser with OCR instance.")
+
+    def boring_extract_text_from_pdf(self, pdf_path):
+        """
+        Extract text from the PDF without using image-based OCR unless no text is found.
+        If no text is detected (PDF likely contains only images), then extract images and
+        run pytesseract OCR on them.
+
+        Args:
+            pdf_path (str): Path to the PDF file.
+
+        Returns:
+            str: The extracted text.
+        """
+        # Extract text directly from the PDF
+        text = self.extract_text_from_pdf(pdf_path)
+        
+        # If we got no text, assume the PDF is image-based
+        if not text.strip():
+            logging.info("No text found in PDF. Attempting OCR on images.")
+            images = self.extract_images_from_pdf(pdf_path)
+            if not images:
+                logging.info("No images found in PDF. Returning empty string.")
+                return ""
+            
+            ocr_texts = []
+            # Perform pytesseract OCR on each image
+            for _, _, image, _ in images:
+                extracted_text = self.ocr.perform_pytesseract_ocr(image)
+                if extracted_text.strip():
+                    ocr_texts.append(extracted_text)
+            
+            # Combine OCR-extracted texts
+            return "\n".join(ocr_texts)
+        
+        # If some text was found, return it as is
+        return text
+
+    def boring_parse_pdf(self, pdf_path):
+        """
+        Boring parse method: Just extract text using boring_extract_text_from_pdf.
+        If no text is found, do a pytesseract OCR on images.
+
+        Args:
+            pdf_path (str): Path to the PDF file.
+
+        Returns:
+            str: The fully extracted text (no fancy OCR or LaTeX parsing).
+        """
+        return self.boring_extract_text_from_pdf(pdf_path)
+
+    def extract_text_from_pdf(self, pdf_path):
+        """
+        Extracts plain text from the PDF.
+
+        Args:
+            pdf_path (str): Path to the PDF file.
+
+        Returns:
+            str: The extracted plain text.
+        """
+        text_content = []
+        try:
+            with fitz.open(pdf_path) as doc:
+                for page_num in range(len(doc)):
+                    page = doc.load_page(page_num)
+                    text = page.get_text()
+                    text_content.append(text)
+            return "\n".join(text_content)
+        except Exception as e:
+            logging.error(f"Error extracting text from PDF {pdf_path}: {e}")
+            return ""
+
+    def extract_images_from_pdf(self, pdf_path):
+        """
+        Extracts all images from the PDF.
+
+        Args:
+            pdf_path (str): Path to the PDF file.
+
+        Returns:
+            List[Tuple[int, int, Image.Image, tuple]]: A list of tuples containing page number, image index, PIL Image object, and bounding box.
+        """
+        images = []
+        try:
+            with fitz.open(pdf_path) as doc:
+                for page_num, page in enumerate(doc, start=1):
+                    logging.info(f"Processing page {page_num}/{len(doc)} for images...")
+                    image_list = page.get_images(full=True)
+                    for img_index, img in enumerate(image_list, start=1):
+                        xref = img[0]
+                        try:
+                            base_image = doc.extract_image(xref)
+                            image_bytes = base_image["image"]
+                            image_ext = base_image["ext"]
+                            image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+                            bbox = img[1:5]  # Bounding box (x0, y0, x1, y1)
+                            images.append((page_num, img_index, image, bbox))
+                            logging.info(f"Extracted image {img_index} on page {page_num}.")
+                        except Exception as e:
+                            logging.error(f"Error extracting image xref {xref} on page {page_num}: {e}")
+            return images
+        except Exception as e:
+            logging.error(f"Error opening PDF {pdf_path}: {e}")
+            return images
+
+    def boring_process_directory(self, directory_path, output_json):
+        """
+        Processes all PDF files in the specified directory using boring_parse_pdf and outputs extracted data to JSON.
+
+        Args:
+            directory_path (str): Path to the directory containing PDF files.
+            output_json (str): Path to the output JSON file.
+
+        Returns:
+            None
+        """
+        extracted_data = {}
+        for filename in os.listdir(directory_path):
+            file_path = os.path.join(directory_path, filename)
+            if not filename.lower().endswith(".pdf"):
+                logging.info(f"Skipping non-PDF file: {filename}")
+                continue
+            logging.info(f"\nProcessing {filename}...")
+            try:
+                text = self.boring_parse_pdf(file_path)
+                extracted_data[filename] = text
+                logging.info("Done.")
+                # Display a sample of the extracted text (first 100 characters)
+                sample = text[:100].replace('\n', ' ') + "..." if len(text) > 100 else text
+                logging.info(f"Sample: {sample}\n")
+            except Exception as e:
+                logging.error(f"Error processing {filename}: {e}")
+
+        # Save all extracted data to a JSON file
+        try:
+            with open(output_json, 'w', encoding='utf-8') as json_file:
+                json.dump(extracted_data, json_file, ensure_ascii=False, indent=4)
+            logging.info(f"All extracted data has been saved to {output_json}.")
+        except Exception as e:
+            logging.error(f"Error saving extracted data to JSON: {e}")
 
 class PDFParser:
     def __init__(self, ocr_instance: OCR):
@@ -402,7 +556,7 @@ class PDFParser:
             return full_text
         except Exception as e:
             raise ValueError(f"Error reading {pdf_path}: {e}")
-
+     
     def extract_text_from_pdf_with_bboxes(self, pdf_path):
         """
         Extracts all text from a PDF file along with their bounding boxes.
@@ -466,20 +620,43 @@ class PDFParser:
         except Exception as e:
             logging.error(f"Error saving extracted data to JSON: {e}")
 
+# if __name__ == "__main__":
+#     # Specify the path to the Tesseract executable if not in PATH (required for pytesseract)
+#     # Example for Windows:
+#     # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+#     # Instantiate the OCR class
+#     ocr_instance = OCR()
+
+#     # Instantiate the PDFParser with the OCR instance
+#     processor = PDFParser(ocr_instance)
+
+#     # Define input and output paths
+#     input_directory = './pdfs'  # Ensure this directory exists and contains PDF files
+#     output_file = 'extracted_texts.json'
+
+#     # Process the directory
+#     processor.process_directory(input_directory, output_file)
+
+import argparse
+
 if __name__ == "__main__":
-    # Specify the path to the Tesseract executable if not in PATH (required for pytesseract)
-    # Example for Windows:
-    # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    parser = argparse.ArgumentParser(description="Extract text and LaTeX from PDFs.")
+    parser.add_argument("--input", type=str, required=True, help="Input directory containing PDF files.")
+    parser.add_argument("--output", type=str, default="extracted_texts.json", help="Output JSON file.")
+    parser.add_argument("--confidence", type=float, default=0.5, help="Confidence threshold for LaTeX OCR.")
+    parser.add_argument("--boring", type=bool, default=False, help="Use the boring PDF parser.")
+    args = parser.parse_args()
 
-    # Instantiate the OCR class
+    # Instantiate classes and process
     ocr_instance = OCR()
+    if args.boring:
+        print("boring")
+        processor = BoringPDFParser(ocr_instance)
+        processor.boring_process_directory(args.input, args.output)
+    else:
+        processor = PDFParser(ocr_instance)
+        processor.process_directory(args.input, args.output)
+        
+    
 
-    # Instantiate the PDFParser with the OCR instance
-    processor = PDFParser(ocr_instance)
-
-    # Define input and output paths
-    input_directory = './pdfs'  # Ensure this directory exists and contains PDF files
-    output_file = 'extracted_texts.json'
-
-    # Process the directory
-    processor.process_directory(input_directory, output_file)
