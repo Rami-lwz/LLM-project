@@ -11,6 +11,26 @@ import pytesseract  # Import pytesseract for fallback OCR
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+def clean_utf8(text: str) -> str:
+    """
+    Clean and convert any escaped Unicode sequences in a text string into their actual characters.
+    For example, '\u00e9' becomes 'é'.
+
+    Args:
+        text (str): The input text potentially containing escaped Unicode sequences.
+
+    Returns:
+        str: The cleaned text with decoded Unicode characters.
+    """
+    # Decode Unicode escape sequences into their actual characters
+    # If text contains sequences like \u00e9, they will be turned into 'é'.
+    try:
+        cleaned_text = text.encode('utf-8', 'backslashreplace').decode('unicode_escape')
+    except UnicodeDecodeError:
+        # If there's an error decoding, just return the text as-is
+        cleaned_text = text
+
+    return cleaned_text
 
 class OCR:
     def __init__(self, arguments=None):
@@ -306,7 +326,7 @@ class BoringPDFParser:
         Returns:
             str: The fully extracted text (no fancy OCR or LaTeX parsing).
         """
-        return self.boring_extract_text_from_pdf(pdf_path)
+        return clean_utf8(self.boring_extract_text_from_pdf(pdf_path))
 
     def extract_text_from_pdf(self, pdf_path):
         """
@@ -553,7 +573,7 @@ class PDFParser:
 
             # Combine all extracted text
             full_text = "\n".join(extracted_text)
-            return full_text
+            return clean_utf8(full_text)
         except Exception as e:
             raise ValueError(f"Error reading {pdf_path}: {e}")
      
