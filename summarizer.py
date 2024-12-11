@@ -38,8 +38,6 @@ def process_chunk(chunk, Tokenizer, model, chunk_size, max_length, min_length):
     return Tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
 def resume_chunked(chunks, Tokenizer, model, chunk_size=300, max_length=130, min_length=30):
-    summaries = []
-
     # Multithreading pour traiter plusieurs chunks en parallèle
     with ThreadPoolExecutor() as executor:
         results = list(
@@ -53,7 +51,7 @@ def resume_chunked(chunks, Tokenizer, model, chunk_size=300, max_length=130, min
                 [min_length] * len(chunks)
             )
         )
-
+    print(len(results))
     return " ".join(results)
 
 def format_summary_openai(summary, api_key="sk-proj-KEY", model="gpt-4o-mini"):
