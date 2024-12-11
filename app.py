@@ -1,7 +1,10 @@
 from flask import Flask, request, jsonify
-from summarizer import resume
-from summarizer import resume_formated
-from summarizer import format_summary_openai
+from summarizer import *
+import ocr
+from ocr import PDFParser
+from ocr import OCR
+from transformers import BartForConditionalGeneration,BartTokenizer
+
 app = Flask(__name__)
 
 @app.route('/')
@@ -14,19 +17,40 @@ def summarize():
     text = data.get('text', '')
     max_lenght = data.get('max_length', 130)
     min_length = data.get('min_length', 30)
-    summary = resume(text, max_lenght, min_length)
+    model_path= data.get('model', 'facebook/bart-large-cnn')
+    model = BartForConditionalGeneration.from_pretrained(model_path)
+    tokenizer = BartTokenizer.from_pretrained(model_path)
+    chunks_context = get_chunks(text,300)
+    summary = resume_chunked(chunks_context, tokenizer, model, 300, max_lenght, min_length)
+    
     return jsonify({'summary': summary})
 
 
-@app.route('/summarize/pretty', methods=['POST'])
-def summarize_pretty():
+
+@app.route('/extract/pdf', methods=['POST'])
+def extract_pdf():
     data = request.get_json()
-    text = data.get('text', '')
+    pdf = data.get('pdf_path', '')
+    ocr = OCR()
+    parser = PDFParser(ocr)
+    text = parser.parse_pdf(pdf)
+    return jsonify({'text': text})
+
+@app.route('/test/pdf', methods=['POST'])
+def test_summarize_pdf():
+    data = request.get_json()
+    pdf = data.get('pdf_path', '')
     max_lenght = data.get('max_length', 130)
     min_length = data.get('min_length', 30)
-    openai_api_key= data.get('openai_api_key', None)
-    summary_pretty = resume_formated(text, max_lenght, min_length, format_summary_openai, openai_api_key)
-    return jsonify({'summary_pretty': summary_pretty})
+    ocr = OCR()
+    parser = PDFParser(ocr)
+    text = parser.parse_pdf(pdf)
+    model = BartForConditionalGeneration.from_pretrained("facebook/bart-large-cnn")
+    tokenizer = BartTokenizer.from_pretrained("facebook/bart-large-cnn")
+    chunks_context = get_chunks(text,tokenizer,300)
+    summary = resume_chunked(chunks_context, tokenizer, model, 300, max_lenght, min_length)
+    return jsonify({'summary': summary})
+
 
 if __name__ == '__main__':
     app.run(debug=False)
