@@ -6,7 +6,7 @@ from ocr import OCR
 from transformers import MBartForConditionalGeneration,MBart50Tokenizer
 from ocr import BoringPDFParser
 from qcmGenerator import get_questions
-
+import os
 app = Flask(__name__)
 
 @app.route('/')
