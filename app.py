@@ -5,7 +5,8 @@ from ocr import PDFParser
 from ocr import OCR
 from transformers import MBartForConditionalGeneration,MBart50Tokenizer
 from ocr import BoringPDFParser
-import os
+from qcmGenerator import get_questions
+
 app = Flask(__name__)
 
 @app.route('/')
@@ -57,6 +58,16 @@ def test_summarize_pdf():
     chunks_context = get_chunks(text,tokenizer,300)
     summary = resume_chunked(chunks_context, tokenizer, model, 300, max_lenght, min_length)
     return jsonify({'summary': summary,"original_length":len(text.split()),"summary_length":len(summary.split())})
+
+
+@app.route('/generate/qcm', methods=['POST'])
+def generate_qcm():
+    data = request.get_json()
+    course = data.get('raw_text', '')
+    api_key = data.get('api_key', 'sk-proj-KEY')
+    model = data.get('model', 'gpt-4o-mini')
+    questions = get_questions(course, api_key, model)
+    return jsonify({'questions': questions})
 
 
 if __name__ == '__main__':
