@@ -19,7 +19,7 @@ def summarize():
     text = data.get('text', '')
     max_lenght = data.get('max_length', 130)
     min_length = data.get('min_length', 30)
-    model_path=data.get('model_path',"facebook/mbart-large-50")
+    model_path=data.get('model_path',"/workspace/LLM-project/models/custom_mbart_french")
     model = MBartForConditionalGeneration.from_pretrained(model_path)
     tokenizer = MBart50Tokenizer.from_pretrained(model_path)
     chunks_context = get_chunks(text,tokenizer,300)
@@ -46,7 +46,7 @@ def test_summarize_pdf():
     parser = BoringPDFParser(ocr)
     text = parser.boring_parse_pdf(pdf)
     model = MBartForConditionalGeneration.from_pretrained(model_path)
-    tokenizer = BartTokenizer.from_pretrained(model_path)
+    tokenizer = MBart50Tokenizer.from_pretrained(model_path)
     open("text_ocr.txt","w").write(text)
     chunks_context = get_chunks(text,tokenizer,300)
     summary = resume_chunked(chunks_context, tokenizer, model, 300, max_lenght, min_length)
@@ -64,4 +64,4 @@ def generate_qcm():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

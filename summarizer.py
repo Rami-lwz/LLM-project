@@ -5,7 +5,7 @@ import torch
 from concurrent.futures import ThreadPoolExecutor
 
 # Ensure proper download of punkt
-nltk.download('punkt')
+nltk.download('punkt_tab')
 
 # Set the device to GPU if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
