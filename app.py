@@ -43,6 +43,7 @@ def test_summarize_pdf():
     pdf = data.get('pdf_path', '')
     max_lenght = data.get('max_length', 130)
     min_length = data.get('min_length', 30)
+    model_path=data.get('model_path',"facebook/mbart-large-50")
     ocr = OCR()
     if os.path.exists(pdf):
         print(f"The file '{pdf}' exists.")
@@ -50,8 +51,8 @@ def test_summarize_pdf():
         print(f"The file '{pdf}' does not exist.")
     parser = BoringPDFParser(ocr)
     text = parser.boring_parse_pdf(pdf)
-    model = MBartForConditionalGeneration.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
-    tokenizer = MBart50Tokenizer.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
+    model = MBartForConditionalGeneration.from_pretrained(model_path)
+    tokenizer = MBart50Tokenizer.from_pretrained(model_path)
     open("text_ocr.txt","w").write(text)
     chunks_context = get_chunks(text,tokenizer,300)
     summary = resume_chunked(chunks_context, tokenizer, model, 300, max_lenght, min_length)

@@ -322,7 +322,6 @@ class BoringPDFParser:
         """
         # Extract text directly from the PDF
         text = self.extract_text_from_pdf(pdf_path)
-        print("EXTRACT",text)
         # If we got no text, assume the PDF is image-based
         if not text.strip():
             print("No text found in PDF. Attempting OCR on images.")
