@@ -5,7 +5,7 @@ from ocr import PDFParser
 from ocr import OCR
 from transformers import MBartForConditionalGeneration,MBart50Tokenizer
 from ocr import BoringPDFParser
-
+import os
 app = Flask(__name__)
 
 @app.route('/')
@@ -44,6 +44,10 @@ def test_summarize_pdf():
     max_lenght = data.get('max_length', 130)
     min_length = data.get('min_length', 30)
     ocr = OCR()
+    if os.path.exists(pdf):
+        print(f"The file '{pdf}' exists.")
+    else:
+        print(f"The file '{pdf}' does not exist.")
     parser = BoringPDFParser(ocr)
     text = parser.boring_parse_pdf(pdf)
     model = MBartForConditionalGeneration.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
@@ -55,4 +59,4 @@ def test_summarize_pdf():
 
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
