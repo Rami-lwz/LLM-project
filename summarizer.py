@@ -103,44 +103,42 @@ def format_summary_openai(summary, api_key="sk-proj-KEY", model="gpt-4o-mini"):
         client = OpenAI(api_key=api_key)
 
         system_prompt= """
-             <CONTEXTE>Tu es un assistant intelligent spécialisé dans la mise en forme et le formatage de texte en HTML. </CONTEXTE>
-    <TACHE>Tu vas recevoir en input le résumé d'un cours en français. Ta tâche est de convertir ce résumé en une version bien structurée au format HTML, avec des éléments tels que :
+             # CONTEXTE
+            Tu es un assistant intelligent spécialisé dans la mise en forme et le formatage de texte en MARKDOWN.
 
-    Une introduction claire si nécessaire.
-    Des listes à puces pour les points clés.
-    Une séparation des sections si le résumé couvre plusieurs sujets.
-    Une présentation propre et facile à lire.
-    Conserve le contenu tel qu'il est, sans modifier le sens ni ajouter d'informations. Tout doit être en français. </TACHE>
-    
-    <EXEMPLE>
-    <h1>La Seconde Guerre mondiale</h1>
-    
-    <h2>Introduction</h2>
-    <p>La Seconde Guerre mondiale (1939-1945) est un conflit majeur de l'histoire moderne, impliquant la plupart des nations du monde, réparties entre les Alliés et l'Axe.</p>
+            # TACHE
+            Tu vas recevoir en input le résumé d'un cours en français. Ta tâche est de convertir ce résumé en une version bien structurée au format MARKDOWN, avec des éléments tels que :
 
-    <h2>Origines du conflit</h2>
-    <ul>
-        <li>Traité de Versailles et ses conséquences.</li>
-        <li>Montée en puissance de régimes totalitaires (Hitler, Mussolini, etc.).</li>
-        <li>Expansionnisme du Japon en Asie.</li>
-    </ul>
+            - Une introduction claire si nécessaire.
+            - Des listes à puces pour les points clés.
+            - Une séparation des sections si le résumé couvre plusieurs sujets.
+            - Une présentation propre et facile à lire.
 
-    <h2>Événements clés</h2>
-    <ul>
-        <li>1939 : Invasion de la Pologne par l'Allemagne.</li>
-        <li>1941 : Attaque de Pearl Harbor par le Japon.</li>
-        <li>1944 : Débarquement en Normandie.</li>
-        <li>1945 : Capitulation de l'Allemagne et du Japon.</li>
-    </ul>
+            Conserve le contenu tel qu'il est, sans modifier le sens ni ajouter d'informations. Tout doit être en français.
 
-    <h2>Conséquences</h2>
-    <ul>
-        <li>Destruction massive et pertes humaines importantes.</li>
-        <li>Création de l'Organisation des Nations unies (ONU).</li>
-        <li>Début de la Guerre froide.</li>
-    </ul>
-    </EXEMPLE>
-    """
+            # EXEMPLE
+            ## La Seconde Guerre mondiale
+
+            ### Introduction
+            La Seconde Guerre mondiale (1939-1945) est un conflit majeur de l'histoire moderne, impliquant la plupart des nations du monde, réparties entre les Alliés et l'Axe.
+
+            ### Origines du conflit
+            - Traité de Versailles et ses conséquences.
+            - Montée en puissance de régimes totalitaires (Hitler, Mussolini, etc.).
+            - Expansionnisme du Japon en Asie.
+
+            ### Événements clés
+            - 1939 : Invasion de la Pologne par l'Allemagne.
+            - 1941 : Attaque de Pearl Harbor par le Japon.
+            - 1944 : Débarquement en Normandie.
+            - 1945 : Capitulation de l'Allemagne et du Japon.
+
+            ### Conséquences
+            - Destruction massive et pertes humaines importantes.
+            - Création de l'Organisation des Nations unies (ONU).
+            - Début de la Guerre froide.
+
+            """
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": summary}

@@ -10,14 +10,14 @@ def get_questions(course, api_key="sk-proj-KEY", model="gpt-4o-mini"):
             
             [
           {
-            question: 'Which book did Marguerite Duras write ?',
-            options: ['Hamlet', 'L'amant', 'Bonjour tristesse', 'L'espèce humaine'],
-            answer: 'L'amant'
+            "question": 'Which book did Marguerite Duras write ?',
+            "options": ['Hamlet', 'L'amant', 'Bonjour tristesse', 'L'espèce humaine'],
+            "answer": 'L'amant'
           },
           {
-            question: "Who wrote 'Les Misérables' ?",
-            options: ['Victor Hugo', 'Emile Zola', 'Marcel Proust', 'Albert Camus'],
-            answer: 'Victor Hugo'
+            "question": "Who wrote 'Les Misérables' ?",
+            "options": ['Victor Hugo', 'Emile Zola', 'Marcel Proust', 'Albert Camus'],
+            "answer": 'Victor Hugo'
           }
         ]
             

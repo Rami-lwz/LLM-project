@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # Importez Flask-CORS
 from summarizer import *
 import ocr
 from ocr import PDFParser
@@ -8,6 +9,8 @@ from ocr import BoringPDFParser
 from qcmGenerator import get_questions
 import os
 app = Flask(__name__)
+
+CORS(app, origins=["http://localhost:8080"], methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type", "Authorization"])
 
 @app.route('/')
 def home():
@@ -45,6 +48,7 @@ def summarize_pretty():
 
 @app.route('/extract/pdf', methods=['POST'])
 def extract_pdf():
+    print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaa")
     data = request.get_json()
     pdf = data.get('pdf_path', '')
     ocr = OCR()
